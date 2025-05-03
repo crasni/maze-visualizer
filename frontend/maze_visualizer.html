@@ -138,9 +138,9 @@
       }
     }
 
-    // 切換模式
-
+    let isAnimating = false;
     function submitMaze() {
+        document.querySelectorAll("button").forEach(btn => btn.disabled = true);
         const data ={
             map: maze,
             start: start,
@@ -156,6 +156,11 @@
         })
         .then(res => res.json())
         .then(data => {
+            if (!Array.isArray(data.steps)) {
+                document.getElementById('statusText').innerText = "No Path!";
+                document.getElementById('statusText').className = "fail";
+                return;
+            }
             animateSteps(data.steps, () => {
                 const statusText = document.getElementById('statusText');
                 if (data.status === "success") {
@@ -165,16 +170,20 @@
                     statusText.innerText = "Failed";
                     statusText.className = "fail";
                 }
+                document.querySelectorAll("button").forEach(btn => btn.disabled = false);
             });
         })
         .catch(error => {
             const statusText = document.getElementById('statusText');
             statusText.textContent = "錯誤：" + error;
-            statusText.getElementById('statusText').className = "fail";
+            statusText.className = "fail";
         });
     }
 
     function animateSteps(steps, callback) {
+        if (isAnimating) return;
+        isAnimating = true;
+
         let i = 0;
         const interval = setInterval(() => {
             if (i >= steps.length) {
@@ -186,15 +195,15 @@
             const { x, y, color } = steps[i];
             const cell = document.querySelector(`[data-row='${x}'][data-col='${y}']`);
             if (cell) {
-            if (color === "green") {
-                cell.classList.add("visiting");
-            } else if (color === "red") {
-                cell.classList.add("visited");
-            }
+                if (color === "green") {
+                    cell.classList.add("visiting");
+                } else if (color === "red") {
+                    cell.classList.add("visited");
+                }
             }
 
             i++;
-        }, 500); // 每格間隔ms 
+        }, 270); // 每格間隔ms 
     }
 
     function clearMaze() {
@@ -217,6 +226,7 @@
         const statusText = document.getElementById("statusText");
         statusText.innerText = "";
         statusText.className = "";
+        isAnimating = false;
     }
 
   </script>
