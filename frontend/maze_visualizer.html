@@ -147,7 +147,7 @@
             end: end,
             algorithm: mode
         }
-        fetch("http://127.0.0.1:5000/submit", {
+        fetch("http://127.0.0.1:5000/solve", {
             method: "POST",
             headers: {
             "Content-Type": "application/json"
@@ -167,6 +167,11 @@
                 }
             });
         })
+        .catch(error => {
+            const statusText = document.getElementById('statusText');
+            statusText.textContent = "錯誤：" + error;
+            statusText.getElementById('statusText').className = "fail";
+        });
     }
 
     function animateSteps(steps, callback) {
