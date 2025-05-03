@@ -176,7 +176,7 @@
         .catch(error => {
             const statusText = document.getElementById('statusText');
             statusText.textContent = "錯誤：" + error;
-            statusText.getElementById('statusText').className = "fail";
+            statusText.className = "fail";
         });
     }
 
