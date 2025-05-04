@@ -199,6 +199,8 @@
             if (!Array.isArray(data.steps)) {
                 document.getElementById('statusText').innerText = "No Path!";
                 document.getElementById('statusText').className = "fail";
+                document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+                isAnimating = false;
                 return;
             }
             animateSteps(data.steps, () => {
@@ -218,6 +220,7 @@
             const statusText = document.getElementById('statusText');
             statusText.textContent = "錯誤：" + error;
             statusText.className = "fail";
+            isAnimating = false;
         });
     }
 
