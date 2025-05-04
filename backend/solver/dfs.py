@@ -29,7 +29,6 @@ def solveDFS(grid, start, end):
                     return True
                 steps.append({"x": x, "y": y, "color": "green"})
         steps.append({"x": x, "y": y, "color": "white"})
-        visited[x][y] = False
         return False
 
     if dfs(start[0], start[1]):
