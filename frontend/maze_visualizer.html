@@ -35,9 +35,6 @@
     .failPath{
         background-color: #d3d3d3;
     }
-    .road{
-        background-color: white;
-    }
 
     .visiting{
         background-color:mediumseagreen;
@@ -165,6 +162,24 @@
     }
 
     function submitMaze() {
+        for (let i = 0; i < SIZE; i++) {
+            for (let j = 0; j < SIZE; j++) {
+                const cell = document.querySelector(`[data-row='${i}'][data-col='${j}']`);
+                if (!cell) continue;
+                
+                cell.classList.remove("scanning", "visited", "visiting", "failPath");
+
+                if ((i === start[0] && j === start[1]) || (i === end[0] && j === end[1])) {
+                    if (!cell.classList.contains("start")) cell.classList.add("start");
+                }
+            }
+        }
+
+        // 清除狀態顯示
+        const statusText = document.getElementById("statusText");
+        statusText.innerText = "";
+        statusText.className = "";
+
         document.querySelectorAll("button").forEach(btn => btn.disabled = true);
         const data ={
             map: maze,
@@ -196,6 +211,7 @@
                     statusText.className = "fail";
                 }
                 document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+                isAnimating = false;  
             });
         })
         .catch(error => {
@@ -213,6 +229,7 @@
         const interval = setInterval(() => {
             if (i >= steps.length) {
                 clearInterval(interval);
+                isAnimating = false;
                 if (callback) callback();
                 return;
             }
