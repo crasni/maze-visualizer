@@ -24,11 +24,19 @@
     }
 
     .start {
-        background-color: gold;
+        background-color: gray;
     }
 
-    .end {
-        background-color: gold;
+    .scanning {
+        outline: 3.5px solid gold;
+        outline-offset: -1px; /* 貼近邊緣 */
+        z-index: 10;
+    }
+    .failPath{
+        background-color: #d3d3d3;
+    }
+    .road{
+        background-color: white;
     }
 
     .visiting{
@@ -64,6 +72,7 @@
         padding: 8px 16px;
         font-size: 18px;
         font-family:'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+        cursor: pointer;
     }
 
     h1 {
@@ -90,57 +99,81 @@
   <div id="maze"></div>
 
   <div id="controls">
-    <button onclick="mode='DFS'; submitMaze();">start DFS</button>
-    <button onclick="mode='BFS'; submitMaze();">start BFS</button>
-    <button onclick="clearMaze()">Reset</button>
+    <button onmouseover="over(this)" , onmouseout="out(this)"", onmousedown=" down(this)",
+    onmouseup="up(this)", onclick="mode='DFS'; submitMaze();">start DFS</button>
+    <button onmouseover="over(this)" , onmouseout="out(this)"", onmousedown=" down(this)",
+    onmouseup="up(this)", onclick="mode='BFS'; submitMaze();">start BFS</button>
+    <button onmouseover="over(this)" , onmouseout="out(this)"", onmousedown=" down(this)",
+    onmouseup="up(this)", onclick="clearMaze()">Reset</button>
+    <button onmouseover="over(this)" , onmouseout="out(this)"", onmousedown=" down(this)",
+    onmouseup="up(this)", onclick="modifi()">modify</button>
   </div>
   <p id="statusText"></p>
   
   <script>
+    function over(elm) {
+        elm.style.backgroundColor = "grey";
+    }
+    function out(elm) {
+        elm.style.backgroundColor = "#5c5c5c";
+    }
+    function down(elm) {
+        elm.style.fontWeight = "bold";
+    }
+    function up(elm) {
+        elm.style.fontWeight = "normal";
+    }
     const SIZE = 8;
     const maze = [];
     let start = null;
     let end = null;
     let mode = null;
-
+    let isAnimating = false;
+    let lastScannedCell = null;
+    let animationInterval = null;
 
     const container = document.getElementById("maze");
     for (let i = 0; i < SIZE; i++) {
-      maze[i] = [];
-      for (let j = 0; j < SIZE; j++) {
-        maze[i][j] = 0; // 0 表示路
+        maze[i] = [];
+        for (let j = 0; j < SIZE; j++) {
+            maze[i][j] = 0; // 0 表示路
 
-        const cell = document.createElement("div");
-        cell.classList.add("cell");
-        cell.dataset.row = i;
-        cell.dataset.col = j;
-        if (i === 0 && j === 0){
-            start = [0, 0];
-            cell.classList.add("start");
-        }
-        if (i === 7 && j === 7){
-            end = [7, 7];
-            cell.classList.add("end");
-        }
-        cell.addEventListener("click", () => {
-            const row = parseInt(cell.dataset.row);
-            const col = parseInt(cell.dataset.col);
-
-            if ((row === start?.[0] && col === start?.[1]) ||
-                (row === end?.[0] && col === end?.[1])) {
-                return; // 不允許起點/終點變成牆
+            const cell = document.createElement("div");
+            cell.classList.add("cell");
+            cell.dataset.row = i;
+            cell.dataset.col = j;
+            if (i === 0 && j === 0){
+                start = [0, 0];
+                cell.classList.add("start");
             }
-            maze[row][col] = maze[row][col] === 0 ? 1 : 0;
-            cell.classList.toggle("wall");
-        });
+            if (i === 7 && j === 7){
+                end = [7, 7];
+                cell.classList.add("start");
+            }
+            cell.addEventListener("click", () => {
+                if (isAnimating) return;
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
 
-        container.appendChild(cell);
-      }
+                if ((row === start?.[0] && col === start?.[1]) ||
+                    (row === end?.[0] && col === end?.[1])) {
+                    return; // 不允許起點/終點變成牆
+                }
+                maze[row][col] = maze[row][col] === 0 ? 1 : 0;
+                cell.classList.toggle("wall");
+            });
+
+            container.appendChild(cell);
+        }
     }
 
-    let isAnimating = false;
     function submitMaze() {
-        document.querySelectorAll("button").forEach(btn => btn.disabled = true);
+        document.querySelectorAll("button").forEach(btn => {
+            const text = btn.textContent.toLowerCase();
+            if (text.includes('dfs') || text.includes('bfs')) {
+                btn.disabled = true;
+            }
+        });
         const data ={
             map: maze,
             start: start,
@@ -185,9 +218,16 @@
         isAnimating = true;
 
         let i = 0;
-        const interval = setInterval(() => {
+        animationInterval = setInterval(() => {
+            if (!isAnimating) {
+                clearInterval(animationInterval);
+                animationInterval = null;
+                return;
+            }
             if (i >= steps.length) {
-                clearInterval(interval);
+                clearInterval(animationInterval);
+                animationInterval = null;
+                isAnimating = false; 
                 if (callback) callback();
                 return;
             }
@@ -195,30 +235,51 @@
             const { x, y, color } = steps[i];
             const cell = document.querySelector(`[data-row='${x}'][data-col='${y}']`);
             if (cell) {
+                if (lastScannedCell) {
+                    lastScannedCell.classList.remove("scanning");
+                }
+
                 if (color === "green") {
+                    cell.className = "cell"; 
                     cell.classList.add("visiting");
                 } else if (color === "red") {
+                    cell.className = "cell"; 
                     cell.classList.add("visited");
+                }
+                else if (color === "white") {
+                    cell.className = "cell"; // 清除其他顏色樣式
+                    cell.classList.add("failPath");
+                }
+                else if (color === "bold") {
+                    cell.classList.add("scanning");
+                    lastScannedCell = cell;
                 }
             }
 
             i++;
-        }, 270); // 每格間隔ms 
+        }, 350); // 每格間隔ms 
     }
 
     function clearMaze() {
+        isAnimating = false;
+        if (animationInterval !== null) {
+            clearInterval(animationInterval);
+            animationInterval = null;
+        }
+
         for (let i = 0; i < SIZE; i++) {
             for (let j = 0; j < SIZE; j++) {
-            const cell = document.querySelector(`[data-row='${i}'][data-col='${j}']`);
-            if (!cell) continue;
-
-            // 保留起點與終點，清除其餘類別
-            if ((i === start[0] && j === start[1]) || (i === end[0] && j === end[1])) {
-                cell.classList.remove("wall", "visiting", "visited");
-            } else {
-                cell.className = "cell"; // 只保留原本 cell 樣式
-                maze[i][j] = 0; // 還原為路
-            }
+                const cell = document.querySelector(`[data-row='${i}'][data-col='${j}']`);
+                if (!cell) continue;
+                
+                cell.classList.remove("scanning");
+                if ((i === start[0] && j === start[1]) || (i === end[0] && j === end[1])) {
+                    cell.className = "cell";
+                    cell.classList.add("start");
+                } else {
+                    cell.className = "cell"; // 只保留原本 cell 樣式
+                    maze[i][j] = 0; // 還原為路
+                }
             }
         }
 
@@ -226,9 +287,42 @@
         const statusText = document.getElementById("statusText");
         statusText.innerText = "";
         statusText.className = "";
-        isAnimating = false;
-    }
+        document.querySelectorAll("button").forEach(btn => btn.disabled = false);
 
+    }
+    function modifi(){
+        isAnimating = false;
+        if (animationInterval !== null) {
+            clearInterval(animationInterval);
+            animationInterval = null;
+        }
+
+        for (let i = 0; i < SIZE; i++) {
+            for (let j = 0; j < SIZE; j++) {
+                const cell = document.querySelector(`[data-row='${i}'][data-col='${j}']`);
+                if (!cell) continue;
+                const isWall = cell.classList.contains("wall");
+
+                // 重設 className
+                cell.className = "cell";
+                if (isWall) {
+                    cell.classList.add("wall");
+                }
+                cell.classList.remove("scanning");
+                if ((i === start[0] && j === start[1]) || (i === end[0] && j === end[1])) {
+                    cell.className = "cell";
+                    cell.classList.add("start");
+                } 
+            }
+        }
+
+        // 清除狀態顯示
+        const statusText = document.getElementById("statusText");
+        statusText.innerText = "";
+        statusText.className = "";
+        document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+
+    }
   </script>
 </body>
 </html>
