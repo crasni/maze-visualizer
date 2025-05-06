@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>Maze Visualizer</title>
+  <style>
+    #maze {
+        display: grid;
+        grid-template-columns: repeat(8, 30px);
+        grid-template-rows: repeat(8, 30px);
+        gap: 1px;
+        margin: 20px auto;
+    }
+
+    .cell {
+        width: 30px;
+        height: 30px;
+        background-color: white;
+        border: 1px solid #5c5c5c;
+    }
+
+    .wall {
+        background-color: black;
+    }
+
+    .start {
+        background-color: gray;
+    }
+
+    .scanning {
+        outline: 3.5px solid gold;
+        outline-offset: -1px; /* 貼近邊緣 */
+        z-index: 10;
+    }
+    .failPath{
+        background-color: #d3d3d3;
+    }
+    .road{
+        background-color: white;
+    }
+
+    .visiting{
+        background-color:mediumseagreen;
+    }
+
+    .visited{
+        background-color:crimson;
+    }
+
+    .enqueued {
+    background-color: lightskyblue;
+    }
+
+    #controls {
+        margin-top: 20px;
+    }
+
+    #controls button {
+        margin: 5px;
+    }
+
+    body {
+        display: flex;
+        background-color: #2f2f2f;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+        font-family:'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+    }
+
+    button {
+        color: rgb(234, 234, 234);
+        background-color: #5c5c5c;
+        margin: 10px;
+        padding: 8px 16px;
+        font-size: 18px;
+        font-family:'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+        cursor: pointer;
+    }
+
+    h1 {
+        color: rgb(234, 234, 234);
+    }
+
+    #statusText {
+        margin-top: 15px;
+        font-size: 20px;
+    }
+
+    .success{
+        color: greenyellow;
+    }
+
+    .fail{
+        color: red;
+    }
+
+  </style>
+</head>
+<body>
+  <h1>Maze Visualizer</h1>
+  <div id="maze"></div>
+
+  <div id="controls">
+    <button onmouseover="over(this)" , onmouseout="out(this)"", onmousedown=" down(this)",
+    onmouseup="up(this)", onclick="mode='DFS'; submitMaze();">start DFS</button>
+    <button onmouseover="over(this)" , onmouseout="out(this)"", onmousedown=" down(this)",
+    onmouseup="up(this)", onclick="mode='BFS'; submitMaze();">start BFS</button>
+    <button onmouseover="over(this)" , onmouseout="out(this)"", onmousedown=" down(this)",
+    onmouseup="up(this)", onclick="clearMaze()">Reset</button>
+  </div>
+  <p id="statusText"></p>
+  
+  <script>
+    function over(elm) {
+        elm.style.backgroundColor = "grey";
+    }
+    function out(elm) {
+        elm.style.backgroundColor = "#5c5c5c";
+    }
+    function down(elm) {
+        elm.style.fontWeight = "bold";
+    }
+    function up(elm) {
+        elm.style.fontWeight = "normal";
+    }
+    const SIZE = 8;
+    const maze = [];
+    let start = null;
+    let end = null;
+    let mode = null;
+    let isAnimating = false;
+    let lastScannedCell = null;
+
+    const container = document.getElementById("maze");
+    for (let i = 0; i < SIZE; i++) {
+        maze[i] = [];
+        for (let j = 0; j < SIZE; j++) {
+            maze[i][j] = 0; // 0 表示路
+
+            const cell = document.createElement("div");
+            cell.classList.add("cell");
+            cell.dataset.row = i;
+            cell.dataset.col = j;
+            if (i === 0 && j === 0){
+                start = [0, 0];
+                cell.classList.add("start");
+            }
+            if (i === 7 && j === 7){
+                end = [7, 7];
+                cell.classList.add("start");
+            }
+            cell.addEventListener("click", () => {
+                if (isAnimating) return;
+                const row = parseInt(cell.dataset.row);
+                const col = parseInt(cell.dataset.col);
+
+                if ((row === start?.[0] && col === start?.[1]) ||
+                    (row === end?.[0] && col === end?.[1])) {
+                    return; // 不允許起點/終點變成牆
+                }
+                maze[row][col] = maze[row][col] === 0 ? 1 : 0;
+                cell.classList.toggle("wall");
+            });
+
+            container.appendChild(cell);
+        }
+    }
+
+    function submitMaze() {
+        document.querySelectorAll("button").forEach(btn => btn.disabled = true);
+        const data ={
+            map: maze,
+            start: start,
+            end: end,
+            algorithm: mode
+        }
+        fetch("http://127.0.0.1:5000/solve", {
+            method: "POST",
+            headers: {
+            "Content-Type": "application/json"
+            },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (!Array.isArray(data.steps)) {
+                document.getElementById('statusText').innerText = "No Path!";
+                document.getElementById('statusText').className = "fail";
+                return;
+            }
+            animateSteps(data.steps, () => {
+                const statusText = document.getElementById('statusText');
+                if (data.status === "success") {
+                    statusText.innerText = "Success";
+                    statusText.className = "success";
+                } else {
+                    statusText.innerText = "Failed";
+                    statusText.className = "fail";
+                }
+                document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+            });
+        })
+        .catch(error => {
+            const statusText = document.getElementById('statusText');
+            statusText.textContent = "錯誤：" + error;
+            statusText.className = "fail";
+        });
+    }
+
+    function animateSteps(steps, callback) {
+        if (isAnimating) return;
+        isAnimating = true;
+
+        let i = 0;
+        const interval = setInterval(() => {
+            if (i >= steps.length) {
+                clearInterval(interval);
+                if (callback) callback();
+                return;
+            }
+
+            const { x, y, color } = steps[i];
+            const cell = document.querySelector(`[data-row='${x}'][data-col='${y}']`);
+            if (cell) {
+                if (lastScannedCell) {
+                    lastScannedCell.classList.remove("scanning");
+                }
+
+                if (color === "green") {
+                    cell.className = "cell"; 
+                    cell.classList.add("visiting");
+                } else if (color === "red") {
+                    cell.className = "cell"; 
+                    cell.classList.add("visited");
+                }
+                else if (color === "white") {
+                    cell.className = "cell"; // 清除其他顏色樣式
+                    cell.classList.add("failPath");
+                }
+                else if (color === "bold") {
+                    cell.classList.add("scanning");
+                    lastScannedCell = cell;
+                }else if (color === "lightskyblue") {
+                    cell.className = "cell";
+                    cell.classList.add("enqueued");
+                }
+            }
+
+            i++;
+        }, 350); // 每格間隔ms 
+    }
+
+    function clearMaze() {
+        for (let i = 0; i < SIZE; i++) {
+            for (let j = 0; j < SIZE; j++) {
+                const cell = document.querySelector(`[data-row='${i}'][data-col='${j}']`);
+                if (!cell) continue;
+                
+                cell.classList.remove("scanning");
+                if ((i === start[0] && j === start[1]) || (i === end[0] && j === end[1])) {
+                    cell.className = "cell";
+                    cell.classList.add("start");
+                } else {
+                    cell.className = "cell"; // 只保留原本 cell 樣式
+                    maze[i][j] = 0; // 還原為路
+                }
+            }
+        }
+
+        // 清除狀態顯示
+        const statusText = document.getElementById("statusText");
+        statusText.innerText = "";
+        statusText.className = "";
+        isAnimating = false;
+    }
+
+  </script>
+</body>
+</html>
