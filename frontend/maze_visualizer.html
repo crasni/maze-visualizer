@@ -180,6 +180,22 @@
         }
 
         function submitMaze() {
+            for (let i = 0; i < SIZE; i++) {
+                for (let j = 0; j < SIZE; j++) {
+                    const cell = document.querySelector(`[data-row='${i}'][data-col='${j}']`);
+                    if (!cell) continue;
+
+                    cell.classList.remove("scanning", "visited", "visiting", "failPath");
+
+                    if ((i === start[0] && j === start[1]) || (i === end[0] && j === end[1])) {
+                        if (!cell.classList.contains("start")) cell.classList.add("start");
+                    }
+                }
+            }
+            const statusText = document.getElementById("statusText");
+            statusText.innerText = "";
+            statusText.className = "";
+          
             document.querySelectorAll("button").forEach(btn => btn.disabled = true);
             const data = {
                 map: maze,
@@ -199,6 +215,7 @@
                     if (!Array.isArray(data.steps)) {
                         document.getElementById('statusText').innerText = "No Path!";
                         document.getElementById('statusText').className = "fail";
+                        isAnimating = false;
                         return;
                     }
                     animateSteps(data.steps, () => {
@@ -211,12 +228,14 @@
                             statusText.className = "fail";
                         }
                         document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+                        isAnimating = false;  
                     });
                 })
                 .catch(error => {
                     const statusText = document.getElementById('statusText');
                     statusText.textContent = "錯誤：" + error;
                     statusText.className = "fail";
+                    isAnimating = false;  
                 });
         }
 
@@ -281,6 +300,7 @@
             const statusText = document.getElementById("statusText");
             statusText.innerText = "";
             statusText.className = "";
+            lastScannedCell = null;
             isAnimating = false;
         }
 
