@@ -52,6 +52,10 @@
         .visited {
             background-color: crimson;
         }
+        
+        .enqueued {
+            background-color: lightskyblue;
+        }
 
         #controls {
             margin-top: 20px;
@@ -264,14 +268,15 @@
                     } else if (color === "red") {
                         cell.className = "cell";
                         cell.classList.add("visited");
-                    }
-                    else if (color === "white") {
-                        cell.className = "cell"; // 清除其他顏色樣式
+                    } else if (color === "white") {
+                        cell.className = "cell";
                         cell.classList.add("failPath");
-                    }
-                    else if (color === "bold") {
+                    } else if (color === "bold") {
                         cell.classList.add("scanning");
                         lastScannedCell = cell;
+                    } else if (color === "lightskyblue") {
+                        cell.className = "cell";
+                        cell.classList.add("enqueued");
                     }
                 }
 
