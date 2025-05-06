@@ -47,6 +47,10 @@
         background-color:crimson;
     }
 
+    .enqueued {
+    background-color: lightskyblue;
+    }
+
     #controls {
         margin-top: 20px;
     }
@@ -238,6 +242,9 @@
                 else if (color === "bold") {
                     cell.classList.add("scanning");
                     lastScannedCell = cell;
+                }else if (color === "lightskyblue") {
+                    cell.className = "cell";
+                    cell.classList.add("enqueued");
                 }
             }
 
