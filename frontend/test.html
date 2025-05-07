@@ -179,11 +179,34 @@
         .speed-control-container #speedValue {
             color: #fff;
         }
+
+        .go-back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 16px;
+            font-size: 16px;
+            background-color: #444;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            z-index: 9999;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s ease;
+        }
+
+        .go-back-button:hover {
+            background-color: #666;
+        }
     </style>
 </head>
 
 <body>
     <h1>Maze Visualizer</h1>
+
+    <button id="goBackButton" class="go-back-button">← Go Back</button>
+
     <div id="maze"></div>
 
     <div id="controls">
@@ -208,6 +231,12 @@
     <p id="statusText"></p>
 
     <script>
+
+        document.getElementById("goBackButton").addEventListener("click", () => {
+            window.history.back();
+        });
+
+
         function over(elm) {
             elm.style.backgroundColor = "grey";
         }
