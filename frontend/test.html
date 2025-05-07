@@ -11,7 +11,6 @@
             margin: 20px auto;
         }
 
-
         .cell {
             width: 30px;
             height: 30px;
@@ -24,11 +23,26 @@
         }
 
         .start {
-            background-color: gold;
+            background-color: gray;
         }
 
         .end {
-            background-color: gold;
+            background-color: gray;
+        }
+
+        .scanning {
+            outline: 3.5px solid gold;
+            outline-offset: -1px;
+            /* 貼近邊緣 */
+            z-index: 10;
+        }
+
+        .failPath {
+            background-color: #d3d3d3;
+        }
+
+        .road {
+            background-color: white;
         }
 
         .visiting {
@@ -37,6 +51,10 @@
 
         .visited {
             background-color: crimson;
+        }
+
+        .enqueued {
+            background-color: lightskyblue;
         }
 
         #controls {
@@ -64,6 +82,7 @@
             padding: 8px 16px;
             font-size: 18px;
             font-family: 'Gill Sans', 'Gill Sans MT', Calibri, 'Trebuchet MS', sans-serif;
+            cursor: pointer;
         }
 
         h1 {
@@ -82,6 +101,84 @@
         .fail {
             color: red;
         }
+
+        #speedControl {
+
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            width: 150px;
+            height: 6px;
+            background: #ddd;
+            border-radius: 4px;
+            outline: none;
+            cursor: pointer;
+
+            /* 反轉方向用以左慢右快 */
+            transform: scaleX(-1);
+        }
+
+        .speed-control-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: #3a3a3a;
+            border-radius: 8px;
+        }
+
+        .speed-control-container .speed-text {
+            color: #ccc;
+            font-size: 14px;
+            width: 40px;
+            text-align: center;
+        }
+
+        #speedControl {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            width: 120px;
+            height: 6px;
+            background: #666;
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+            transform: scaleX(-1);
+            /* 左慢右快 */
+        }
+
+        #speedControl::-webkit-slider-thumb {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #4a90e2;
+            border-radius: 50%;
+        }
+
+        .speed-control-container {
+            display: flex;
+            /* 保持水平排列 */
+            align-items: center;
+            /* 垂直置中 */
+            justify-content: center;
+            /* 水平置中 */
+            gap: 8px;
+            /* 元素間距 */
+            color: #fff;
+            /* 文字白色 */
+            margin-top: 20px;
+            /* 按鈕下方留 20px 空白 */
+            margin-bottom: 20px;
+            /* */
+        }
+
+        /* 讓 label、span 也套到白色 */
+        .speed-control-container .speed-text,
+        .speed-control-container #speedValue {
+            color: #fff;
+        }
     </style>
 </head>
 
@@ -90,28 +187,53 @@
     <div id="maze"></div>
 
     <div id="controls">
-        <button onclick="mode='DFS'; submitMaze();">start DFS</button>
-        <button onclick="mode='BFS'; submitMaze();">start BFS</button>
-        <button onclick="clearMaze()">Reset</button>
+        <button onmouseover="over(this)" onmouseout="out(this)" onmousedown=" down(this)" , onmouseup="up(this)"
+            onclick="mode='DFS'; submitMaze();">Start DFS</button>
+        <button onmouseover="over(this)" onmouseout="out(this)" onmousedown=" down(this)" , onmouseup="up(this)"
+            onclick="mode='BFS'; submitMaze();">Start BFS</button>
+        <button onmouseover="over(this)" onmouseout="out(this)" onmousedown=" down(this)" , onmouseup="up(this)"
+            onclick="clearMaze()">Reset</button>
+        <button onmouseover="over(this)" onmouseout="out(this)" onmousedown="down(this)" onmouseup="up(this)"
+            onclick="modifi()">Modify</button>
+
+        <div id="speedControlContainer" class="speed-control-container">
+            <span class="speed-text">Slow</span>
+            <input type="range" id="speedControl" min="50" max="1000" value="350" step="50">
+            <span class="speed-text">Fast</span>
+            <span id="speedValue">350</span> ms
+        </div>
+
+
     </div>
     <p id="statusText"></p>
 
     <script>
+        function over(elm) {
+            elm.style.backgroundColor = "grey";
+        }
+        function out(elm) {
+            elm.style.backgroundColor = "#5c5c5c";
+        }
+        function down(elm) {
+            elm.style.fontWeight = "bold";
+        }
+        function up(elm) {
+            elm.style.fontWeight = "normal";
+        }
         const params = new URLSearchParams(window.location.search);
         const SIZE = parseInt(params.get("size")) || 8;
 
         const container = document.getElementById("maze");
         container.style.gridTemplateColumns = `repeat(${SIZE}, 30px)`;
         container.style.gridTemplateRows = `repeat(${SIZE}, 30px)`;
-
-
         const maze = [];
         let start = null;
         let end = null;
         let mode = null;
+        let animationTimer = null;
+        let isAnimating = false;
+        let lastScannedCell = null;
 
-
-        const container = document.getElementById("maze");
         for (let i = 0; i < SIZE; i++) {
             maze[i] = [];
             for (let j = 0; j < SIZE; j++) {
@@ -121,21 +243,27 @@
                 cell.classList.add("cell");
                 cell.dataset.row = i;
                 cell.dataset.col = j;
+
+                // Set start position (top-left corner)
                 if (i === 0 && j === 0) {
                     start = [0, 0];
                     cell.classList.add("start");
                 }
+
+                // Set end position (bottom-right corner)
                 if (i === SIZE - 1 && j === SIZE - 1) {
                     end = [SIZE - 1, SIZE - 1];
                     cell.classList.add("end");
                 }
                 cell.addEventListener("click", () => {
+                    if (isAnimating) return;
                     const row = parseInt(cell.dataset.row);
                     const col = parseInt(cell.dataset.col);
 
                     if ((row === start?.[0] && col === start?.[1]) ||
                         (row === end?.[0] && col === end?.[1])) {
                         return; // 不允許起點/終點變成牆
+
                     }
                     maze[row][col] = maze[row][col] === 0 ? 1 : 0;
                     cell.classList.toggle("wall");
@@ -145,9 +273,39 @@
             }
         }
 
-        let isAnimating = false;
+        let animationSpeed = 350;                               // 預設 350ms
+        const speedSlider = document.getElementById("speedControl");
+        const speedDisplay = document.getElementById("speedValue");
+
+        // 當滑桿變動時，更新 animationSpeed 及畫面上的數值
+        speedSlider.addEventListener("input", function () {
+            animationSpeed = parseInt(this.value);
+            speedDisplay.textContent = animationSpeed;
+        });
+
         function submitMaze() {
-            document.querySelectorAll("button").forEach(btn => btn.disabled = true);
+            for (let i = 0; i < SIZE; i++) {
+                for (let j = 0; j < SIZE; j++) {
+                    const cell = document.querySelector(`[data-row='${i}'][data-col='${j}']`);
+                    if (!cell) continue;
+
+                    cell.classList.remove("scanning", "visited", "visiting", "failPath");
+
+                    if ((i === start[0] && j === start[1]) || (i === end[0] && j === end[1])) {
+                        if (!cell.classList.contains("start")) cell.classList.add("start");
+                    }
+                }
+            }
+            const statusText = document.getElementById("statusText");
+            statusText.innerText = "";
+            statusText.className = "";
+
+            document.querySelectorAll("button").forEach(btn => {
+                if (btn.textContent.includes("DFS") || btn.textContent.includes("BFS")) {
+                    btn.disabled = true;
+                }
+            });
+
             const data = {
                 map: maze,
                 start: start,
@@ -166,6 +324,7 @@
                     if (!Array.isArray(data.steps)) {
                         document.getElementById('statusText').innerText = "No Path!";
                         document.getElementById('statusText').className = "fail";
+                        isAnimating = false;
                         return;
                     }
                     animateSteps(data.steps, () => {
@@ -177,13 +336,19 @@
                             statusText.innerText = "Failed";
                             statusText.className = "fail";
                         }
-                        document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+                        document.querySelectorAll("button").forEach(btn => {
+                            if (btn.textContent.includes("DFS") || btn.textContent.includes("BFS")) {
+                                btn.disabled = true;
+                            }
+                        });
+                        isAnimating = false;
                     });
                 })
                 .catch(error => {
                     const statusText = document.getElementById('statusText');
                     statusText.textContent = "錯誤：" + error;
                     statusText.className = "fail";
+                    isAnimating = false;
                 });
         }
 
@@ -192,36 +357,54 @@
             isAnimating = true;
 
             let i = 0;
-            const interval = setInterval(() => {
-                if (i >= steps.length) {
-                    clearInterval(interval);
-                    if (callback) callback();
+            function step() {
+                // stopped or done?
+                if (!isAnimating || i >= steps.length) {
+                    isAnimating = false;
+                    if (callback && i >= steps.length) callback();
                     return;
                 }
-
                 const { x, y, color } = steps[i];
                 const cell = document.querySelector(`[data-row='${x}'][data-col='${y}']`);
                 if (cell) {
+                    if (lastScannedCell) {
+                        lastScannedCell.classList.remove("scanning");
+                    }
+
                     if (color === "green") {
+                        cell.className = "cell";
                         cell.classList.add("visiting");
                     } else if (color === "red") {
+                        cell.className = "cell";
                         cell.classList.add("visited");
+                    } else if (color === "white") {
+                        cell.className = "cell";
+                        cell.classList.add("failPath");
+                    } else if (color === "bold") {
+                        cell.classList.add("scanning");
+                        lastScannedCell = cell;
+                    } else if (color === "lightskyblue") {
+                        cell.className = "cell";
+                        cell.classList.add("enqueued");
                     }
                 }
 
                 i++;
-            }, 270); // 每格間隔ms 
+                animationTimer = setTimeout(step, animationSpeed);
+            } step();
         }
 
         function clearMaze() {
+            stopAnimation();
             for (let i = 0; i < SIZE; i++) {
                 for (let j = 0; j < SIZE; j++) {
                     const cell = document.querySelector(`[data-row='${i}'][data-col='${j}']`);
                     if (!cell) continue;
 
-                    // 保留起點與終點，清除其餘類別
+                    cell.classList.remove("scanning");
                     if ((i === start[0] && j === start[1]) || (i === end[0] && j === end[1])) {
-                        cell.classList.remove("wall", "visiting", "visited");
+                        cell.className = "cell";
+                        cell.classList.add("start");
                     } else {
                         cell.className = "cell"; // 只保留原本 cell 樣式
                         maze[i][j] = 0; // 還原為路
@@ -233,7 +416,35 @@
             const statusText = document.getElementById("statusText");
             statusText.innerText = "";
             statusText.className = "";
+            document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+            lastScannedCell = null;
             isAnimating = false;
+        }
+        function modifi() {
+            stopAnimation();
+            for (let i = 0; i < SIZE; i++) {
+                for (let j = 0; j < SIZE; j++) {
+                    const cell = document.querySelector(`[data-row='${i}'][data-col='${j}']`);
+                    if (!cell) continue;
+                    const isWall = cell.classList.contains("wall");
+                    cell.className = "cell";
+                    if (isWall) cell.classList.add("wall");
+                    if ((i === start[0] && j === start[1]) || (i === end[0] && j === end[1])) cell.classList.add("start");
+                }
+            }
+            const statusText = document.getElementById("statusText");
+            statusText.innerText = "";
+            statusText.className = "";
+            document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+            lastScannedCell = null;
+        }
+
+        function stopAnimation() {
+            isAnimating = false;
+            if (animationTimer !== null) {
+                clearTimeout(animationTimer);
+                animationTimer = null;
+            }
         }
 
     </script>
