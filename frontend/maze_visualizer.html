@@ -115,6 +115,9 @@
             onclick="mode='BFS'; submitMaze();">start BFS</button>
         <button onmouseover="over(this)" onmouseout="out(this)" onmousedown=" down(this)" , onmouseup="up(this)"
             onclick="clearMaze()">Reset</button>
+        <button onmouseover="over(this)" onmouseout="out(this)" onmousedown="down(this)"
+            onmouseup="up(this)" onclick="modifi()">modify</button>
+
     </div>
     <p id="statusText"></p>
 
@@ -200,7 +203,12 @@
             statusText.innerText = "";
             statusText.className = "";
           
-            document.querySelectorAll("button").forEach(btn => btn.disabled = true);
+            document.querySelectorAll("button").forEach(btn => {
+                if (btn.textContent.includes("DFS") || btn.textContent.includes("BFS")) {
+                    btn.disabled = true;
+                }
+            });
+
             const data = {
                 map: maze,
                 start: start,
@@ -231,7 +239,11 @@
                             statusText.innerText = "Failed";
                             statusText.className = "fail";
                         }
-                        document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+                        document.querySelectorAll("button").forEach(btn => {
+                            if (btn.textContent.includes("DFS") || btn.textContent.includes("BFS")) {
+                                btn.disabled = true;
+                            }
+                        });
                         isAnimating = false;  
                     });
                 })
@@ -248,9 +260,17 @@
             isAnimating = true;
 
             let i = 0;
-            const interval = setInterval(() => {
+            animationInterval  = setInterval(() => {
+                if (!isAnimating) {
+                    clearInterval(animationInterval);
+                    animationInterval = null;
+                    return;
+                }
                 if (i >= steps.length) {
-                    clearInterval(interval);
+                    clearInterval(animationInterval);
+                    animationInterval = null;
+                    isAnimating = false;
+
                     if (callback) callback();
                     return;
                 }
@@ -305,10 +325,36 @@
             const statusText = document.getElementById("statusText");
             statusText.innerText = "";
             statusText.className = "";
+            document.querySelectorAll("button").forEach(btn => btn.disabled = false);
             lastScannedCell = null;
             isAnimating = false;
         }
+    function modifi() {
+        stopAnimation();
+        for (let i = 0; i < SIZE; i++) {
+            for (let j = 0; j < SIZE; j++) {
+                const cell = document.querySelector(`[data-row='${i}'][data-col='${j}']`);
+                if (!cell) continue;
+                const isWall = cell.classList.contains("wall");
+                cell.className = "cell";
+                if (isWall) cell.classList.add("wall");
+                if ((i === start[0] && j === start[1]) || (i === end[0] && j === end[1])) cell.classList.add("start");
+            }
+        }
+        const statusText = document.getElementById("statusText");
+        statusText.innerText = "";
+        statusText.className = "";
+        document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+        lastScannedCell = null;
+    }
 
+    function stopAnimation() {
+        isAnimating = false;
+        if (animationInterval !== null) {
+            clearInterval(animationInterval);
+            animationInterval = null;
+        }
+    }
     </script>
 </body>
 
