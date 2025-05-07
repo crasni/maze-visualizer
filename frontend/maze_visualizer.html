@@ -472,9 +472,9 @@
 
         function stopAnimation() {
             isAnimating = false;
-            if (animationInterval !== null) {
-                clearInterval(animationInterval);
-                animationInterval = null;
+            if (animationTimer !== null) {
+                clearTimeout(animationTimer);
+                animationTimer = null;
             }
         }
     </script>
