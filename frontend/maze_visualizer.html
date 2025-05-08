@@ -52,7 +52,7 @@
         .visited {
             background-color: crimson;
         }
-        
+
         .enqueued {
             background-color: lightskyblue;
         }
@@ -101,27 +101,144 @@
         .fail {
             color: red;
         }
+
+        #speedControl {
+
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            width: 150px;
+            height: 6px;
+            background: #ddd;
+            border-radius: 4px;
+            outline: none;
+            cursor: pointer;
+
+            /* 反轉方向用以左慢右快 */
+            transform: scaleX(-1);
+        }
+
+        .speed-control-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: #3a3a3a;
+            border-radius: 8px;
+        }
+
+        .speed-control-container .speed-text {
+            color: #ccc;
+            font-size: 14px;
+            width: 40px;
+            text-align: center;
+        }
+
+        #speedControl {
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            width: 120px;
+            height: 6px;
+            background: #666;
+            border-radius: 3px;
+            outline: none;
+            cursor: pointer;
+            transform: scaleX(-1);
+            /* 左慢右快 */
+        }
+
+        #speedControl::-webkit-slider-thumb {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #4a90e2;
+            border-radius: 50%;
+        }
+
+        .speed-control-container {
+            display: flex;
+            /* 保持水平排列 */
+            align-items: center;
+            /* 垂直置中 */
+            justify-content: center;
+            /* 水平置中 */
+            gap: 8px;
+            /* 元素間距 */
+            color: #fff;
+            /* 文字白色 */
+            margin-top: 20px;
+            /* 按鈕下方留 20px 空白 */
+            margin-bottom: 20px;
+            /* */
+        }
+
+        /* 讓 label、span 也套到白色 */
+        .speed-control-container .speed-text,
+        .speed-control-container #speedValue {
+            color: #fff;
+        }
+
+        .go-back-button {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            padding: 10px 16px;
+            font-size: 16px;
+            background-color: #444;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            z-index: 9999;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.3s ease;
+        }
+
+        .go-back-button:hover {
+            background-color: #666;
+        }
+    </style>
     </style>
 </head>
 
 <body>
     <h1>Maze Visualizer</h1>
+
+    <button id="goBackButton" class="go-back-button">← Go Back</button>
+
     <div id="maze"></div>
 
     <div id="controls">
         <button onmouseover="over(this)" onmouseout="out(this)" onmousedown=" down(this)" , onmouseup="up(this)"
-            onclick="mode='DFS'; submitMaze();">start DFS</button>
+            onclick="mode='DFS'; submitMaze();">Start DFS</button>
         <button onmouseover="over(this)" onmouseout="out(this)" onmousedown=" down(this)" , onmouseup="up(this)"
-            onclick="mode='BFS'; submitMaze();">start BFS</button>
+            onclick="mode='BFS'; submitMaze();">Start BFS</button>
         <button onmouseover="over(this)" onmouseout="out(this)" onmousedown=" down(this)" , onmouseup="up(this)"
             onclick="clearMaze()">Reset</button>
-        <button onmouseover="over(this)" onmouseout="out(this)" onmousedown="down(this)"
-            onmouseup="up(this)" onclick="modifi()">modify</button>
+        <button onmouseover="over(this)" onmouseout="out(this)" onmousedown="down(this)" onmouseup="up(this)"
+            onclick="modifi()">Modify</button>
+
+        <div id="speedControlContainer" class="speed-control-container">
+            <span class="speed-text">Slow</span>
+            <input type="range" id="speedControl" min="25" max="1000" value="350" step="25">
+            <span class="speed-text">Fast</span>
+            <span id="speedValue">350</span> ms
+        </div>
+
+
 
     </div>
     <p id="statusText"></p>
 
     <script>
+
+        document.getElementById("goBackButton").addEventListener("click", () => {
+            window.history.back();
+        });
+
+
         function over(elm) {
             elm.style.backgroundColor = "grey";
         }
@@ -144,6 +261,7 @@
         let start = null;
         let end = null;
         let mode = null;
+        let animationTimer = null;
         let isAnimating = false;
         let lastScannedCell = null;
 
@@ -186,6 +304,17 @@
             }
         }
 
+        let animationSpeed = 350;                               // 預設 350ms
+        const speedSlider = document.getElementById("speedControl");
+        const speedDisplay = document.getElementById("speedValue");
+
+        // 當滑桿變動時，更新 animationSpeed 及畫面上的數值
+        speedSlider.addEventListener("input", function () {
+            animationSpeed = parseInt(this.value);
+            speedDisplay.textContent = animationSpeed;
+        });
+
+
         function submitMaze() {
             for (let i = 0; i < SIZE; i++) {
                 for (let j = 0; j < SIZE; j++) {
@@ -202,7 +331,7 @@
             const statusText = document.getElementById("statusText");
             statusText.innerText = "";
             statusText.className = "";
-          
+
             document.querySelectorAll("button").forEach(btn => {
                 if (btn.textContent.includes("DFS") || btn.textContent.includes("BFS")) {
                     btn.disabled = true;
@@ -244,14 +373,14 @@
                                 btn.disabled = true;
                             }
                         });
-                        isAnimating = false;  
+                        isAnimating = false;
                     });
                 })
                 .catch(error => {
                     const statusText = document.getElementById('statusText');
                     statusText.textContent = "錯誤：" + error;
                     statusText.className = "fail";
-                    isAnimating = false;  
+                    isAnimating = false;
                 });
         }
 
@@ -260,21 +389,13 @@
             isAnimating = true;
 
             let i = 0;
-            animationInterval  = setInterval(() => {
-                if (!isAnimating) {
-                    clearInterval(animationInterval);
-                    animationInterval = null;
-                    return;
-                }
-                if (i >= steps.length) {
-                    clearInterval(animationInterval);
-                    animationInterval = null;
+            function step() {
+                // stopped or done?
+                if (!isAnimating || i >= steps.length) {
                     isAnimating = false;
-
-                    if (callback) callback();
+                    if (callback && i >= steps.length) callback();
                     return;
                 }
-
                 const { x, y, color } = steps[i];
                 const cell = document.querySelector(`[data-row='${x}'][data-col='${y}']`);
                 if (cell) {
@@ -301,10 +422,11 @@
                 }
 
                 i++;
-            }, 350); // 每格間隔ms 
+                animationTimer = setTimeout(step, animationSpeed);
+            } step();
         }
-
         function clearMaze() {
+            stopAnimation();
             for (let i = 0; i < SIZE; i++) {
                 for (let j = 0; j < SIZE; j++) {
                     const cell = document.querySelector(`[data-row='${i}'][data-col='${j}']`);
@@ -329,32 +451,32 @@
             lastScannedCell = null;
             isAnimating = false;
         }
-    function modifi() {
-        stopAnimation();
-        for (let i = 0; i < SIZE; i++) {
-            for (let j = 0; j < SIZE; j++) {
-                const cell = document.querySelector(`[data-row='${i}'][data-col='${j}']`);
-                if (!cell) continue;
-                const isWall = cell.classList.contains("wall");
-                cell.className = "cell";
-                if (isWall) cell.classList.add("wall");
-                if ((i === start[0] && j === start[1]) || (i === end[0] && j === end[1])) cell.classList.add("start");
+        function modifi() {
+            stopAnimation();
+            for (let i = 0; i < SIZE; i++) {
+                for (let j = 0; j < SIZE; j++) {
+                    const cell = document.querySelector(`[data-row='${i}'][data-col='${j}']`);
+                    if (!cell) continue;
+                    const isWall = cell.classList.contains("wall");
+                    cell.className = "cell";
+                    if (isWall) cell.classList.add("wall");
+                    if ((i === start[0] && j === start[1]) || (i === end[0] && j === end[1])) cell.classList.add("start");
+                }
+            }
+            const statusText = document.getElementById("statusText");
+            statusText.innerText = "";
+            statusText.className = "";
+            document.querySelectorAll("button").forEach(btn => btn.disabled = false);
+            lastScannedCell = null;
+        }
+
+        function stopAnimation() {
+            isAnimating = false;
+            if (animationTimer !== null) {
+                clearTimeout(animationTimer);
+                animationTimer = null;
             }
         }
-        const statusText = document.getElementById("statusText");
-        statusText.innerText = "";
-        statusText.className = "";
-        document.querySelectorAll("button").forEach(btn => btn.disabled = false);
-        lastScannedCell = null;
-    }
-
-    function stopAnimation() {
-        isAnimating = false;
-        if (animationInterval !== null) {
-            clearInterval(animationInterval);
-            animationInterval = null;
-        }
-    }
     </script>
 </body>
 
