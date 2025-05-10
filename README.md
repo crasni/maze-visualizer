@@ -1,7 +1,7 @@
 # Maze Visualizer
 
-This project is a **maze pathfinding visualizer** built by Group 8 for NTU DSA 2025 Software Engineering Project.  
-It allows users to design a maze, choose start/end points, and watch how **DFS (Depth-First Search)** and **BFS (Breadth-First Search)** algorithms explore and solve the maze through animated visual feedback.
+This project is a **maze pathfinding visualizer** developed by Group 8 for the NTU DSA 2025 Software Engineering Project.  
+It allows users to design a maze and observe how **Depth-First Search (DFS)** and **Breadth-First Search (BFS)** algorithms explore and solve the maze through animated visual feedback.
 
 ---
 
